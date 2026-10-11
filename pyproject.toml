@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cad-data-extractor"
+version = "0.1.0"
+description = "Extract traceable structured data from DWG and DXF drawings"
+requires-python = ">=3.10"
+dependencies = ["ezdxf>=1.4.4,<2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[project.scripts]
+cad-extract = "cad_extractor.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
