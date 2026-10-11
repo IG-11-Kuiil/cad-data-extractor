@@ -4,6 +4,34 @@ A local Python CLI that extracts structured JSON from CAD drawings. DWG input
 uses a separately installed GNU LibreDWG converter; DXF input is read directly
 with ezdxf. Drawings are processed locally.
 
+## Local UI
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\cad-studio.exe
+```
+
+Open **http://127.0.0.1:8765**. On Windows, `./start-studio.ps1` also sets up the
+Python environment when needed. Use `--port 8766` with `cad-studio` to choose a
+different port.
+
+CAD Studio includes drag-and-drop DWG/DXF upload, a sample drawing, inventory
+cards, searchable text and attributes, filters by layer/layout/type, an entity
+property inspector, layer definitions, diagnostics, and JSON/CSV downloads.
+CSV exports respect filters in the current data view. JSON exports contain the
+complete extraction. Spreadsheet formula prefixes are escaped in CSV exports.
+
+The geometry overview supports model-space lines, circles, and straight
+lightweight polylines with standard XY extrusion. It omits other entities,
+including block instances, curves, dimensions, and text, and reports the number
+omitted. It is an overview rather than a full CAD viewer.
+
+The server binds to loopback, accepts files up to 50 MB, and deletes uploaded
+originals after processing. Extracted results remain in the browser session;
+download them to keep a copy. LibreDWG is detected on PATH or at
+`tools/libredwg/dwg2dxf.exe` in the current checkout. Set `CAD_CONVERTER` to an
+executable path to override detection. This server is intended for local use.
+
 ## Quick start (Windows PowerShell)
 
 ```powershell

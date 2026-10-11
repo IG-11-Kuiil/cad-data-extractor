@@ -30,3 +30,13 @@ def test_native_dwg_roundtrip(tmp_path):
     assert any(e["type"] == "CIRCLE" and e["properties"]["radius"] == 3 for e in result["entities"])
     assert any(a["tag"] == "DRAWING_NO" and a["text"] == "M-001"
                for e in result["entities"] for a in e.get("attributes", []))
+    from io import BytesIO
+    from cad_extractor.web import create_app
+    app = create_app()
+    app.config.update(TESTING=True)
+    app_converter = str(folder / f"dwg2dxf{extension}")
+    from unittest.mock import patch
+    with patch("cad_extractor.web.find_converter", return_value=app_converter):
+        response = app.test_client().post("/api/extract", data={"drawing": (BytesIO(dwg.read_bytes()), "input.dwg")})
+    assert response.status_code == 200
+    assert any(e.get("text") == "Pump P-101" for e in response.json["entities"])
