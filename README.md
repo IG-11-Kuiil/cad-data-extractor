@@ -1,12 +1,37 @@
 # CAD Data Extractor
 
-A local Python CLI that extracts structured JSON from CAD drawings. DWG input
+A local Python application with a browser UI and CLI that extracts structured
+data from CAD drawings. DWG input
 uses a separately installed GNU LibreDWG converter; DXF input is read directly
 with ezdxf. Drawings are processed locally.
 
+## What we have built
+
+The first milestone is a working deterministic extraction pipeline: upload a
+drawing, inspect its data, and export records that retain their source entity
+handles, layers, and layouts. CAD Studio makes those records searchable without
+requiring a CAD application for the first pass.
+
+```text
+DWG -> LibreDWG -> temporary DXF -> ezdxf -> structured records
+DXF ------------------------------------> ezdxf -> structured records
+                                                    |
+                                             CAD Studio / CLI
+                                                    |
+                                                JSON / CSV
+```
+
+The broader goal is to test whether native CAD data adds useful information to
+PDF plan sheets, then connect answers back to their source evidence. This version
+implements the native drawing extraction and inspection portion. PDF extraction,
+automatic DWG-to-PDF matching, and AI question answering are not implemented yet.
+
 ## Local UI
 
+Requires Python 3.10 or newer. From a fresh checkout:
+
 ```powershell
+python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 .\.venv\Scripts\cad-studio.exe
 ```
@@ -74,6 +99,46 @@ JSON includes `schema_version`, `source`, `drawing`, `summary`, `layers`,
 provide traceability. Summary counts include top-level layout entities; block
 definition entities are stored separately to avoid double-counting.
 
+## Drawing comparisons completed
+
+On October 11, 2026, we inspected two uploaded DWGs and manually compared their
+extracted data with user-provided screenshots of PDF sheets. These were selected
+content checks, not automated PDF comparisons or full drawing fidelity tests.
+The source drawings and exported results are not bundled with this repository.
+
+| Drawing | Extraction observed | Comparison result |
+| --- | --- | --- |
+| `SD-14.dwg` street section | 355 layout entities, 35 text entries, 22 layers, 5 block definitions; 5,900 diagnostics | Roadway widths (27 ft total, 13 ft 6 in halves, 11 ft 6 in portions), 5 ft sidewalk labels, 2 ft 6 in minimum utility strips, slope labels, curb note, and the three general notes matched the screenshot. |
+| `floorplan.dwg` residential plans and elevation | 900 layout entities, 400 text/attribute entries including block definitions, 24 layers, 262 block definitions, 24 dimension entities; 1,514 diagnostics | Ground Floor, First Floor, and Front Elevation labels matched. Model-space text contained three ground-floor bedroom labels and two first-floor bedroom labels, all 11 ft x 15 ft; kitchen, living-room, balcony, and passage labels also matched the screenshot. |
+
+### Differences found in SD-14
+
+- The DWG labels the right-of-way as `45'-0" R/W`; the screenshot says
+  `R/W VARIABLE WIDTH`.
+- The DWG's extracted review date is `26 JAN 21`; the screenshot says `JULY 2024`.
+- The DWG title includes `SECTION FOR RESIDENTIAL USE`; the screenshot's title
+  ends with `SECTION`.
+
+These differences suggest different revisions of the same detail. This pair
+cannot establish extraction accuracy against an exact matching source revision.
+
+### Additional checks on the floor plan
+
+- The outer dimensions of both floor plans read 60 ft x 50 ft. Extracted CAD
+  dimension measurements were 720 x 600 drawing units, and the units code was
+  inches, consistent with those displayed dimensions.
+- Room sizes were checked as labels; they were not independently calculated
+  from room boundaries. Floor assignment used label positions relative to the
+  floor titles and the screenshot, not a modeled room hierarchy.
+- Searching all extracted text for `BEDROOM` returned nine entries. Only five
+  were direct model-space bedroom labels; four came from block definitions.
+  A text-search result count is not a room count.
+
+The diagnostics included unsupported or unknown objects in SD-14 and flag,
+attribute, and hatch issues in the floor plan. A diagnostic count is not a count
+of lost visible objects. Successful label extraction does not prove that every
+object, graphic, or property survived conversion.
+
 ## Scope and limitations
 
 This is structured extraction, not OCR or automatic engineering interpretation.
@@ -112,3 +177,21 @@ The downloaded archive's SHA256 was
 
 Customer `.dwg`/`.dxf` inputs, local converter binaries, and generated output are
 ignored by Git. Generate synthetic examples with `examples/make_sample.py`.
+
+## Next milestones
+
+1. Obtain a DWG and PDF from the exact same revision, along with referenced
+   drawings, and define a few questions to verify against them.
+2. Add PDF text extraction with page coordinates and a viewer for checking
+   candidate links between CAD records and PDF regions.
+3. Normalize units and separate layout entities, block definitions, and placed
+   block instances when answering counts or quantities.
+4. Evaluate a richer Civil 3D export or API for modeled pipes, structures,
+   alignments, and surfaces. The current pipeline has not demonstrated reliable
+   extraction of those typed object properties.
+5. Add interpretation for ambiguous notes and symbols after deterministic
+   answers have been validated. Each answer should include its source scope,
+   supporting record, and any missing data.
+
+The next success criterion is a small set of accurate, traceable answers from a
+matched drawing-and-sheet pair.
